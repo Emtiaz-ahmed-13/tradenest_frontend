@@ -1,4 +1,5 @@
 import { createProductAction } from "@/app/actions";
+import { ProductImageUploader } from "@/components/product/ProductImageUploader";
 import { PageHeader } from "@/components/shared/PageHeader";
 import type { Category } from "@/lib/api";
 import { serverApiGet } from "@/lib/server-api";
@@ -101,14 +102,7 @@ export default async function SellPage() {
             />
           </label>
 
-          <label className="mt-5 grid gap-2 text-sm font-medium text-gray-700">
-            Product image URL
-            <input
-              name="imageUrl"
-              className="rounded-md border border-dashed border-brand-200 bg-brand-50 px-4 py-3 text-sm outline-none transition focus:border-brand-500 focus:ring-4 focus:ring-brand-100"
-              placeholder="Paste an R2/public image URL"
-            />
-          </label>
+          <ProductImageUploader />
 
           <button className="mt-6 rounded-md bg-brand-500 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-600">
             Submit for review

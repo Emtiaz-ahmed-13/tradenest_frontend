@@ -200,11 +200,13 @@ export async function sellerOnboardingAction(formData: FormData) {
 
 export async function createProductAction(formData: FormData) {
   const imageUrl = value(formData, "imageUrl");
+  const imageKey = value(formData, "imageKey");
+  const title = value(formData, "title");
 
   await authedRequest("/products", {
     method: "POST",
     body: JSON.stringify({
-      title: value(formData, "title"),
+      title,
       description: value(formData, "description"),
       condition: value(formData, "condition"),
       listingType: value(formData, "listingType"),
@@ -214,7 +216,14 @@ export async function createProductAction(formData: FormData) {
       categoryId: value(formData, "categoryId"),
       location: value(formData, "location") || undefined,
       images: imageUrl
-        ? [{ url: imageUrl, alt: value(formData, "title"), isPrimary: true }]
+        ? [
+            {
+              url: imageUrl,
+              key: imageKey || undefined,
+              alt: title,
+              isPrimary: true,
+            },
+          ]
         : undefined,
     }),
   });
