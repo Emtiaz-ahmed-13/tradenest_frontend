@@ -1,8 +1,10 @@
 import Link from "next/link";
 import {
+  applyCouponAction,
   placeOrderAction,
   removeCartItemAction,
   updateCartItemAction,
+  validateCouponAction,
 } from "@/app/actions";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import {
@@ -114,6 +116,36 @@ export default async function CartPage() {
               <span>{formatPrice(cart?.subtotal ?? 0, cart?.currency)}</span>
             </div>
           </div>
+          <form
+            action={validateCouponAction}
+            className="mt-6 space-y-3 rounded-xl bg-gray-50 p-4"
+          >
+            <p className="text-sm font-semibold text-gray-900">Coupon code</p>
+            <input type="hidden" name="orderAmount" value={cart?.subtotal ?? 0} />
+            <div className="flex gap-2">
+              <input
+                name="code"
+                className="flex-1 rounded-md border border-gray-200 px-3 py-2 text-sm"
+                placeholder="SAVE10"
+              />
+              <button className="rounded-md border border-gray-200 px-3 py-2 text-sm font-semibold text-gray-700">
+                Validate
+              </button>
+            </div>
+          </form>
+          <form action={applyCouponAction} className="space-y-3 rounded-xl bg-gray-50 p-4">
+            <input type="hidden" name="orderAmount" value={cart?.subtotal ?? 0} />
+            <div className="flex gap-2">
+              <input
+                name="code"
+                className="flex-1 rounded-md border border-gray-200 px-3 py-2 text-sm"
+                placeholder="Apply coupon at checkout"
+              />
+              <button className="rounded-md bg-brand-500 px-3 py-2 text-sm font-semibold text-white">
+                Apply
+              </button>
+            </div>
+          </form>
           <form action={placeOrderAction} className="mt-6 space-y-4">
             <label className="grid gap-2 text-sm font-medium text-gray-700">
               Shipping address

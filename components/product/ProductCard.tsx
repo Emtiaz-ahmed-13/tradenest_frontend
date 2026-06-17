@@ -27,9 +27,16 @@ export function ProductCard({ product }: ProductCardProps) {
         style={productImageStyle(product)}
         aria-label={product.title}
       >
-        <span className="absolute left-4 top-4 rounded-full bg-white/90 px-3 py-1 text-xs font-semibold text-gray-700 shadow-sm">
-          {product.status ?? "ACTIVE"}
-        </span>
+        <div className="absolute left-4 top-4 flex flex-wrap gap-2">
+          <span className="rounded-full bg-white/90 px-3 py-1 text-xs font-semibold text-gray-700 shadow-sm">
+            {product.status ?? "ACTIVE"}
+          </span>
+          {product.isBoosted ? (
+            <span className="rounded-full bg-amber-400/90 px-3 py-1 text-xs font-semibold text-white shadow-sm">
+              Boosted
+            </span>
+          ) : null}
+        </div>
       </div>
       <div className="space-y-4 p-5">
         <div className="flex items-start justify-between gap-4">
@@ -48,7 +55,10 @@ export function ProductCard({ product }: ProductCardProps) {
             <p className="text-xl font-bold text-gray-900">
               {formatPrice(product.price, product.currency)}
             </p>
-            <p className="text-xs text-gray-500">Seller: {sellerName}</p>
+            <p className="text-xs text-gray-500">
+              Seller: {sellerName}
+              {product.viewCount ? ` · ${product.viewCount} views` : ""}
+            </p>
           </div>
           <span className="rounded-md bg-brand-50 px-2 py-1 text-xs font-semibold text-brand-700">
             {rating} rated

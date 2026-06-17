@@ -4,10 +4,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { authClient } from "@/lib/auth-client";
-
-function getAuthErrorMessage(error: { message?: string } | null | undefined) {
-  return error?.message ?? "Login failed. Please check your credentials.";
-}
+import {
+  getAuthErrorMessage,
+  getAuthNetworkErrorMessage,
+} from "@/lib/auth-errors";
 
 export function LoginForm() {
   const router = useRouter();
@@ -23,18 +23,28 @@ export function LoginForm() {
     const email = String(formData.get("email") ?? "");
     const password = String(formData.get("password") ?? "");
 
-    const { error: authError } = await authClient.signIn.email({
-      email,
-      password,
-      callbackURL: "/profile",
-      rememberMe: true,
-    });
+    try {
+      const { error: authError } = await authClient.signIn.email({
+        email,
+        password,
+        callbackURL: "/profile",
+        rememberMe: true,
+      });
 
-    setIsSubmitting(false);
-
-    if (authError) {
-      setError(getAuthErrorMessage(authError));
+      if (authError) {
+        setError(
+          getAuthErrorMessage(
+            authError,
+            "Login failed. Please check your credentials.",
+          ),
+        );
+        return;
+      }
+    } catch (requestError) {
+      setError(getAuthNetworkErrorMessage(requestError));
       return;
+    } finally {
+      setIsSubmitting(false);
     }
 
     router.push("/profile");

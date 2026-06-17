@@ -33,8 +33,9 @@ export type User = {
   emailVerified?: boolean;
   image?: string | null;
   phone?: string | null;
-  role?: "BUYER" | "SELLER" | "ADMIN";
+  role?: "BUYER" | "SELLER" | "ADMIN" | "MODERATOR";
   isActive?: boolean;
+  referralCode?: string | null;
   createdAt?: string;
   sellerProfile?: SellerProfile | null;
 };
@@ -57,11 +58,17 @@ export type ProductImage = {
   sortOrder?: number;
 };
 
+export type ProductTag = {
+  id: string;
+  name: string;
+};
+
 export type Product = {
   id: string;
   slug: string;
   title: string;
   description: string;
+  richDescription?: string | null;
   price: number | string;
   compareAtPrice?: number | string | null;
   currency?: string;
@@ -71,11 +78,207 @@ export type Product = {
   stock?: number;
   location?: string | null;
   viewCount?: number;
+  isBoosted?: boolean;
+  boostedUntil?: string | null;
+  expiresAt?: string | null;
+  tags?: ProductTag[];
   category?: Category | null;
   seller?: User | null;
   sellerId?: string;
   images?: ProductImage[];
   createdAt?: string;
+};
+
+export type SearchResult = {
+  products: Product[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+};
+
+export type Wallet = {
+  id: string;
+  balance: number | string;
+  held: number | string;
+  currency: string;
+};
+
+export type WalletTransaction = {
+  id: string;
+  type: string;
+  amount: number | string;
+  balanceAfter: number | string;
+  reference?: string | null;
+  description?: string | null;
+  createdAt: string;
+};
+
+export type Coupon = {
+  id: string;
+  code: string;
+  description?: string | null;
+  discountType: "PERCENTAGE" | "FIXED";
+  discountValue: number | string;
+  minOrderAmount?: number | string | null;
+  maxDiscount?: number | string | null;
+  usageLimit?: number | null;
+  perUserLimit?: number;
+  usedCount?: number;
+  isActive?: boolean;
+  startsAt?: string | null;
+  expiresAt?: string | null;
+};
+
+export type CouponValidation = {
+  valid: boolean;
+  reason?: string;
+  discount?: number;
+  coupon?: Coupon;
+};
+
+export type FlashSaleProduct = {
+  id: string;
+  salePrice: number | string;
+  stockLimit?: number | null;
+  soldCount?: number;
+  product: Product;
+};
+
+export type FlashSale = {
+  id: string;
+  title: string;
+  description?: string | null;
+  status: string;
+  startsAt: string;
+  endsAt: string;
+  products?: FlashSaleProduct[];
+};
+
+export type ReferralEntry = {
+  id: string;
+  code: string;
+  status: string;
+  rewardAmount?: number | string | null;
+  rewardedAt?: string | null;
+  createdAt: string;
+  referredUser?: Pick<User, "id" | "name" | "email">;
+};
+
+export type ReferralSummary = {
+  code: string | null;
+  referredBy?: Pick<User, "id" | "name"> | null;
+  referrals: ReferralEntry[];
+};
+
+export type SwapOffer = {
+  id: string;
+  productId?: string | null;
+  cashAmount?: number | string | null;
+  message?: string | null;
+  isAccepted: boolean;
+  offerer?: Pick<User, "id" | "name" | "email">;
+  createdAt: string;
+};
+
+export type SwapRequest = {
+  id: string;
+  status: string;
+  message?: string | null;
+  createdAt: string;
+  initiator?: Pick<User, "id" | "name" | "email">;
+  receiver?: Pick<User, "id" | "name" | "email">;
+  product?: Product;
+  offers?: SwapOffer[];
+};
+
+export type KycVerification = {
+  id: string;
+  status: string;
+  nidNumber?: string | null;
+  frontImageUrl?: string | null;
+  backImageUrl?: string | null;
+  selfieUrl?: string | null;
+  adminNote?: string | null;
+  reviewedAt?: string | null;
+  createdAt: string;
+};
+
+export type Banner = {
+  id: string;
+  title: string;
+  imageUrl: string;
+  linkUrl?: string | null;
+  position: string;
+  sortOrder: number;
+  isActive: boolean;
+  startsAt?: string | null;
+  endsAt?: string | null;
+};
+
+export type AuditLog = {
+  id: string;
+  action: string;
+  entityType: string;
+  entityId?: string | null;
+  metadata?: Record<string, unknown> | null;
+  createdAt: string;
+  actor?: Pick<User, "id" | "name" | "email"> | null;
+};
+
+export type AdminDashboard = {
+  users: number;
+  sellers: number;
+  products: number;
+  orders: {
+    count: number;
+    total: number;
+    paidCount: number;
+    paidTotal: number;
+  };
+  payments: {
+    completedCount: number;
+    completedTotal: number;
+  };
+  pendingKyc: number;
+  openReturns: number;
+  activeBanners: number;
+};
+
+export type AnalyticsOverview = {
+  gmv: Record<string, unknown>;
+  users: Record<string, unknown>;
+  orders: Record<string, unknown>;
+  revenueByPeriod: Array<{ period: string; revenue: number; orders: number }>;
+};
+
+export type SellerDashboard = {
+  totalSales: number;
+  totalSalesValue: number;
+  revenue: Record<string, unknown>;
+  orderCountsByStatus: Record<string, number>;
+  productPerformance: Array<{
+    productId: string;
+    unitsSold: number;
+    orderLines: number;
+    revenue: number;
+  }>;
+  payoutSummary: Record<string, unknown>;
+  productsCount: number;
+};
+
+export type PaymentTransaction = {
+  id: string;
+  type: string;
+  status: string;
+  createdAt: string;
+};
+
+export type GatewayInitResponse = {
+  payment: Payment;
+  providerRef?: string | null;
+  redirectUrl?: string | null;
+  raw?: Record<string, unknown>;
 };
 
 export type CartItem = {

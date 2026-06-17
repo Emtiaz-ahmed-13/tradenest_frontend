@@ -3,7 +3,13 @@
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { apiRequest, type Order } from "@/lib/api";
+import {
+  apiRequest,
+  type CouponValidation,
+  type GatewayInitResponse,
+  type Order,
+  type Payment,
+} from "@/lib/api";
 
 async function authHeaders() {
   const headers = new Headers();
@@ -198,16 +204,27 @@ export async function sellerOnboardingAction(formData: FormData) {
   revalidatePath("/seller/dashboard");
 }
 
+function parseTags(raw: string) {
+  return raw
+    .split(",")
+    .map((tag) => tag.trim())
+    .filter(Boolean);
+}
+
 export async function createProductAction(formData: FormData) {
   const imageUrl = value(formData, "imageUrl");
   const imageKey = value(formData, "imageKey");
   const title = value(formData, "title");
+  const tags = parseTags(value(formData, "tags"));
+  const expiresAt = value(formData, "expiresAt");
+  const boostedUntil = value(formData, "boostedUntil");
 
   await authedRequest("/products", {
     method: "POST",
     body: JSON.stringify({
       title,
       description: value(formData, "description"),
+      richDescription: value(formData, "richDescription") || undefined,
       condition: value(formData, "condition"),
       listingType: value(formData, "listingType"),
       status: value(formData, "status"),
@@ -215,6 +232,10 @@ export async function createProductAction(formData: FormData) {
       stock: Number(value(formData, "stock") || 1),
       categoryId: value(formData, "categoryId"),
       location: value(formData, "location") || undefined,
+      isBoosted: formData.get("isBoosted") === "on",
+      ...(expiresAt ? { expiresAt } : {}),
+      ...(boostedUntil ? { boostedUntil } : {}),
+      ...(tags.length ? { tags } : {}),
       images: imageUrl
         ? [
             {
@@ -231,6 +252,18 @@ export async function createProductAction(formData: FormData) {
   revalidatePath("/products");
   revalidatePath("/seller/dashboard");
   redirect("/seller/dashboard");
+}
+
+export async function bulkUploadProductsAction(formData: FormData) {
+  const payload = value(formData, "productsJson");
+
+  await authedRequest("/products/bulk", {
+    method: "POST",
+    body: JSON.stringify({ products: JSON.parse(payload) }),
+  });
+
+  revalidatePath("/products");
+  revalidatePath("/seller/dashboard");
 }
 
 export async function approveProductAction(formData: FormData) {
@@ -259,6 +292,369 @@ export async function resolveReviewFlagAction(formData: FormData) {
 
   await authedRequest(`/admin/reviews/${reviewId}/resolve-flag`, {
     method: "PATCH",
+  });
+
+  revalidatePath("/admin/dashboard");
+}
+
+export async function validateCouponAction(formData: FormData) {
+  const code = value(formData, "code");
+  const orderAmount = Number(value(formData, "orderAmount"));
+
+  await authedRequest<CouponValidation>("/coupons/validate", {
+    method: "POST",
+    body: JSON.stringify({ code, orderAmount }),
+  });
+
+  revalidatePath("/cart");
+}
+
+export async function applyCouponAction(formData: FormData) {
+  const code = value(formData, "code");
+  const orderAmount = Number(value(formData, "orderAmount"));
+  const orderId = value(formData, "orderId");
+
+  await authedRequest("/coupons/apply", {
+    method: "POST",
+    body: JSON.stringify({
+      code,
+      orderAmount,
+      ...(orderId ? { orderId } : {}),
+    }),
+  });
+
+  revalidatePath("/cart");
+  revalidatePath("/orders");
+}
+
+export async function submitKycAction(formData: FormData) {
+  await authedRequest("/kyc", {
+    method: "POST",
+    body: JSON.stringify({
+      nidNumber: value(formData, "nidNumber"),
+      frontImageUrl: value(formData, "frontImageUrl"),
+      backImageUrl: value(formData, "backImageUrl"),
+      selfieUrl: value(formData, "selfieUrl"),
+    }),
+  });
+
+  revalidatePath("/kyc");
+  revalidatePath("/profile");
+}
+
+export async function generateReferralCodeAction() {
+  await authedRequest("/referral/code", { method: "POST" });
+  revalidatePath("/referrals");
+}
+
+export async function trackReferralAction(formData: FormData) {
+  await authedRequest("/referral/track", {
+    method: "POST",
+    body: JSON.stringify({ code: value(formData, "code") }),
+  });
+
+  revalidatePath("/referrals");
+  revalidatePath("/profile");
+}
+
+export async function rewardReferralAction(formData: FormData) {
+  const referralId = value(formData, "referralId");
+  const amount = value(formData, "amount");
+
+  await authedRequest(`/referral/${referralId}/reward`, {
+    method: "POST",
+    body: JSON.stringify({
+      ...(amount ? { amount: Number(amount) } : {}),
+    }),
+  });
+
+  revalidatePath("/admin/dashboard");
+}
+
+export async function createSwapRequestAction(formData: FormData) {
+  const productId = value(formData, "productId");
+  const offeredProductId = value(formData, "offeredProductId");
+  const cashAmount = value(formData, "cashAmount");
+  const message = value(formData, "message");
+
+  await authedRequest("/swap/requests", {
+    method: "POST",
+    body: JSON.stringify({
+      productId,
+      ...(offeredProductId ? { offeredProductId } : {}),
+      ...(cashAmount ? { cashAmount: Number(cashAmount) } : {}),
+      ...(message ? { message } : {}),
+    }),
+  });
+
+  revalidatePath("/swap");
+}
+
+export async function counterSwapOfferAction(formData: FormData) {
+  const requestId = value(formData, "requestId");
+  const offeredProductId = value(formData, "offeredProductId");
+  const cashAmount = value(formData, "cashAmount");
+  const message = value(formData, "message");
+
+  await authedRequest(`/swap/requests/${requestId}/offers`, {
+    method: "POST",
+    body: JSON.stringify({
+      ...(offeredProductId ? { offeredProductId } : {}),
+      ...(cashAmount ? { cashAmount: Number(cashAmount) } : {}),
+      ...(message ? { message } : {}),
+    }),
+  });
+
+  revalidatePath("/swap");
+}
+
+export async function acceptSwapOfferAction(formData: FormData) {
+  const requestId = value(formData, "requestId");
+  const offerId = value(formData, "offerId");
+
+  await authedRequest(`/swap/requests/${requestId}/offers/${offerId}/accept`, {
+    method: "PATCH",
+  });
+
+  revalidatePath("/swap");
+}
+
+export async function rejectSwapRequestAction(formData: FormData) {
+  const requestId = value(formData, "requestId");
+
+  await authedRequest(`/swap/requests/${requestId}/reject`, {
+    method: "PATCH",
+  });
+
+  revalidatePath("/swap");
+}
+
+export async function cancelSwapRequestAction(formData: FormData) {
+  const requestId = value(formData, "requestId");
+
+  await authedRequest(`/swap/requests/${requestId}/cancel`, {
+    method: "PATCH",
+  });
+
+  revalidatePath("/swap");
+}
+
+export async function completeSwapRequestAction(formData: FormData) {
+  const requestId = value(formData, "requestId");
+
+  await authedRequest(`/swap/requests/${requestId}/complete`, {
+    method: "PATCH",
+  });
+
+  revalidatePath("/swap");
+}
+
+export async function initGatewayPaymentAction(formData: FormData) {
+  const paymentId = value(formData, "paymentId");
+  const orderId = value(formData, "orderId");
+  const returnUrl = value(formData, "returnUrl");
+  const cancelUrl = value(formData, "cancelUrl");
+
+  const response = await authedRequest<GatewayInitResponse>(
+    `/payments/${paymentId}/init-gateway`,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        ...(returnUrl ? { returnUrl } : {}),
+        ...(cancelUrl ? { cancelUrl } : {}),
+      }),
+    },
+  );
+
+  revalidatePath(`/orders/${orderId}`);
+
+  if (response.data.redirectUrl) {
+    redirect(response.data.redirectUrl);
+  }
+}
+
+export async function createGatewayPaymentAction(formData: FormData) {
+  const orderId = value(formData, "orderId");
+  const provider = value(formData, "provider");
+
+  const paymentResponse = await authedRequest<Payment>("/payments", {
+    method: "POST",
+    body: JSON.stringify({ orderId, provider }),
+  });
+
+  revalidatePath(`/orders/${orderId}`);
+
+  const payment = paymentResponse.data;
+  const gatewayProviders = ["BKASH", "NAGAD", "SSLCOMMERZ"];
+
+  if (gatewayProviders.includes(provider)) {
+    const initResponse = await authedRequest<GatewayInitResponse>(
+      `/payments/${payment.id}/init-gateway`,
+      { method: "POST", body: JSON.stringify({}) },
+    );
+
+    if (initResponse.data.redirectUrl) {
+      redirect(initResponse.data.redirectUrl);
+    }
+  }
+}
+
+export async function updateNotificationPreferencesAction(formData: FormData) {
+  const fields = [
+    "inApp",
+    "email",
+    "sms",
+    "push",
+    "orderUpdates",
+    "productUpdates",
+    "promotions",
+  ] as const;
+
+  const payload = Object.fromEntries(
+    fields.map((field) => [field, formData.get(field) === "on"]),
+  );
+
+  await authedRequest("/notifications/preferences/me", {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+
+  revalidatePath("/profile");
+}
+
+export async function registerPushTokenAction(formData: FormData) {
+  await authedRequest("/notifications/push-tokens", {
+    method: "POST",
+    body: JSON.stringify({
+      token: value(formData, "token"),
+      platform: value(formData, "platform") || "web",
+    }),
+  });
+
+  revalidatePath("/profile");
+}
+
+export async function createCouponAction(formData: FormData) {
+  await authedRequest("/coupons", {
+    method: "POST",
+    body: JSON.stringify({
+      code: value(formData, "code"),
+      description: value(formData, "description") || undefined,
+      discountType: value(formData, "discountType"),
+      discountValue: Number(value(formData, "discountValue")),
+      minOrderAmount: value(formData, "minOrderAmount")
+        ? Number(value(formData, "minOrderAmount"))
+        : undefined,
+      maxDiscount: value(formData, "maxDiscount")
+        ? Number(value(formData, "maxDiscount"))
+        : undefined,
+      usageLimit: value(formData, "usageLimit")
+        ? Number(value(formData, "usageLimit"))
+        : undefined,
+      isActive: formData.get("isActive") !== "off",
+    }),
+  });
+
+  revalidatePath("/admin/dashboard");
+}
+
+export async function createFlashSaleAction(formData: FormData) {
+  await authedRequest("/flash-sale", {
+    method: "POST",
+    body: JSON.stringify({
+      title: value(formData, "title"),
+      description: value(formData, "description") || undefined,
+      startsAt: value(formData, "startsAt"),
+      endsAt: value(formData, "endsAt"),
+    }),
+  });
+
+  revalidatePath("/admin/dashboard");
+  revalidatePath("/flash-sales");
+}
+
+export async function activateFlashSaleAction(formData: FormData) {
+  const flashSaleId = value(formData, "flashSaleId");
+
+  await authedRequest(`/flash-sale/${flashSaleId}/activate`, {
+    method: "PATCH",
+  });
+
+  revalidatePath("/admin/dashboard");
+  revalidatePath("/flash-sales");
+}
+
+export async function cancelFlashSaleAction(formData: FormData) {
+  const flashSaleId = value(formData, "flashSaleId");
+
+  await authedRequest(`/flash-sale/${flashSaleId}/cancel`, {
+    method: "PATCH",
+  });
+
+  revalidatePath("/admin/dashboard");
+  revalidatePath("/flash-sales");
+}
+
+export async function createBannerAction(formData: FormData) {
+  await authedRequest("/admin/banners", {
+    method: "POST",
+    body: JSON.stringify({
+      title: value(formData, "title"),
+      imageUrl: value(formData, "imageUrl"),
+      linkUrl: value(formData, "linkUrl") || undefined,
+      position: value(formData, "position") || "home",
+      sortOrder: value(formData, "sortOrder")
+        ? Number(value(formData, "sortOrder"))
+        : undefined,
+      isActive: formData.get("isActive") !== "off",
+    }),
+  });
+
+  revalidatePath("/admin/dashboard");
+}
+
+export async function deleteBannerAction(formData: FormData) {
+  const bannerId = value(formData, "bannerId");
+
+  await authedRequest(`/admin/banners/${bannerId}`, {
+    method: "DELETE",
+  });
+
+  revalidatePath("/admin/dashboard");
+}
+
+export async function updateAdminSettingsAction(formData: FormData) {
+  const settingsJson = value(formData, "settingsJson");
+
+  await authedRequest("/admin/settings", {
+    method: "PATCH",
+    body: JSON.stringify({ settings: JSON.parse(settingsJson) }),
+  });
+
+  revalidatePath("/admin/dashboard");
+}
+
+export async function approveKycAction(formData: FormData) {
+  const kycId = value(formData, "kycId");
+
+  await authedRequest(`/kyc/${kycId}/approve`, {
+    method: "PATCH",
+    body: JSON.stringify({
+      adminNote: value(formData, "adminNote") || undefined,
+    }),
+  });
+
+  revalidatePath("/admin/dashboard");
+}
+
+export async function rejectKycAction(formData: FormData) {
+  const kycId = value(formData, "kycId");
+
+  await authedRequest(`/kyc/${kycId}/reject`, {
+    method: "PATCH",
+    body: JSON.stringify({
+      adminNote: value(formData, "adminNote") || "Rejected",
+    }),
   });
 
   revalidatePath("/admin/dashboard");

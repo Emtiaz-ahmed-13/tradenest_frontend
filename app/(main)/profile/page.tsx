@@ -1,7 +1,9 @@
 import Link from "next/link";
 import {
   createAddressAction,
+  registerPushTokenAction,
   sellerOnboardingAction,
+  updateNotificationPreferencesAction,
   updateProfileAction,
 } from "@/app/actions";
 import { StatCard } from "@/components/shared/StatCard";
@@ -153,15 +155,45 @@ export default async function ProfilePage() {
             </form>
           )}
 
-          <div className="mt-6 rounded-xl bg-gray-50 p-4 text-sm text-gray-600">
+          <form action={updateNotificationPreferencesAction} className="mt-6 space-y-3 rounded-xl bg-gray-50 p-4 text-sm">
             <p className="font-semibold text-gray-900">Notification preferences</p>
-            <p className="mt-2">
-              In-app: {preferences?.inApp ? "On" : "Off"} | Email:{" "}
-              {preferences?.email ? "On" : "Off"} | SMS:{" "}
-              {preferences?.sms ? "On" : "Off"} | Push:{" "}
-              {preferences?.push ? "On" : "Off"}
-            </p>
-          </div>
+            {(
+              [
+                ["inApp", "In-app"],
+                ["email", "Email"],
+                ["sms", "SMS"],
+                ["push", "Push"],
+                ["orderUpdates", "Order updates"],
+                ["productUpdates", "Product updates"],
+                ["promotions", "Promotions"],
+              ] as const
+            ).map(([name, label]) => (
+              <label key={name} className="flex items-center gap-2 text-gray-600">
+                <input
+                  type="checkbox"
+                  name={name}
+                  defaultChecked={preferences?.[name] ?? true}
+                  className="accent-brand-500"
+                />
+                {label}
+              </label>
+            ))}
+            <button className="rounded-md bg-gray-900 px-4 py-2 text-sm font-semibold text-white">
+              Save preferences
+            </button>
+          </form>
+          <form action={registerPushTokenAction} className="mt-4 space-y-3 rounded-xl bg-gray-50 p-4 text-sm">
+            <p className="font-semibold text-gray-900">Push token</p>
+            <input
+              name="token"
+              required
+              className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm"
+              placeholder="Web push token"
+            />
+            <button className="rounded-md border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700">
+              Register token
+            </button>
+          </form>
         </div>
       </div>
     </section>

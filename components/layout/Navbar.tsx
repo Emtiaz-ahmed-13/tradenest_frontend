@@ -3,8 +3,12 @@ import { AuthActions } from "@/components/auth/AuthActions";
 
 const navItems = [
   { href: "/products", label: "Products" },
+  { href: "/flash-sales", label: "Flash sales" },
   { href: "/sell", label: "Sell" },
+  { href: "/wallet", label: "Wallet" },
   { href: "/orders", label: "Orders" },
+  { href: "/swap", label: "Swap" },
+  { href: "/referrals", label: "Referrals" },
   { href: "/messages", label: "Messages" },
 ];
 
@@ -34,7 +38,7 @@ export function Navbar() {
           </label>
         </form>
 
-        <nav className="hidden shrink-0 items-center gap-6 md:flex">
+        <nav className="hidden shrink-0 items-center gap-4 xl:flex">
           {navItems.map((item) => (
             <Link
               key={item.href}
@@ -46,7 +50,19 @@ export function Navbar() {
           ))}
         </nav>
 
-        <div className="ml-auto shrink-0">
+        <div className="ml-auto flex shrink-0 items-center gap-3">
+          <Link
+            href="/seller/dashboard"
+            className="hidden text-sm font-medium text-gray-500 hover:text-brand-600 md:inline"
+          >
+            Seller
+          </Link>
+          <Link
+            href="/admin/dashboard"
+            className="hidden text-sm font-medium text-gray-500 hover:text-brand-600 md:inline"
+          >
+            Admin
+          </Link>
           <AuthActions />
         </div>
       </div>

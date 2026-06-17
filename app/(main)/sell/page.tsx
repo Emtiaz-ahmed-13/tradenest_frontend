@@ -1,4 +1,4 @@
-import { createProductAction } from "@/app/actions";
+import { bulkUploadProductsAction, createProductAction } from "@/app/actions";
 import { ProductImageUploader } from "@/components/product/ProductImageUploader";
 import { PageHeader } from "@/components/shared/PageHeader";
 import type { Category } from "@/lib/api";
@@ -87,6 +87,34 @@ export default async function SellPage() {
                 className="rounded-md border border-gray-200 px-4 py-3 text-sm"
               />
             </label>
+            <label className="grid gap-2 text-sm font-medium text-gray-700">
+              Tags (comma separated)
+              <input
+                name="tags"
+                className="rounded-md border border-gray-200 px-4 py-3 text-sm"
+                placeholder="electronics, warranty, like-new"
+              />
+            </label>
+            <label className="grid gap-2 text-sm font-medium text-gray-700">
+              Listing expiry
+              <input
+                name="expiresAt"
+                type="datetime-local"
+                className="rounded-md border border-gray-200 px-4 py-3 text-sm"
+              />
+            </label>
+            <label className="flex items-center gap-3 text-sm font-medium text-gray-700 sm:col-span-2">
+              <input type="checkbox" name="isBoosted" className="h-4 w-4 accent-brand-500" />
+              Boost this listing
+            </label>
+            <label className="grid gap-2 text-sm font-medium text-gray-700 sm:col-span-2">
+              Boosted until
+              <input
+                name="boostedUntil"
+                type="datetime-local"
+                className="rounded-md border border-gray-200 px-4 py-3 text-sm"
+              />
+            </label>
             <input type="hidden" name="listingType" value="MARKETPLACE" />
             <input type="hidden" name="status" value="PENDING_REVIEW" />
           </div>
@@ -95,10 +123,20 @@ export default async function SellPage() {
             Description
             <textarea
               name="description"
-              rows={6}
+              rows={4}
               required
               className="rounded-md border border-gray-200 px-4 py-3 text-sm outline-none transition focus:border-brand-500 focus:ring-4 focus:ring-brand-100"
               placeholder="Describe condition, accessories, warranty, and pickup details."
+            />
+          </label>
+
+          <label className="mt-5 grid gap-2 text-sm font-medium text-gray-700">
+            Rich description (optional)
+            <textarea
+              name="richDescription"
+              rows={4}
+              className="rounded-md border border-gray-200 px-4 py-3 text-sm outline-none transition focus:border-brand-500 focus:ring-4 focus:ring-brand-100"
+              placeholder="Long-form details, specs, or formatted notes."
             />
           </label>
 
@@ -109,13 +147,35 @@ export default async function SellPage() {
           </button>
         </form>
 
-        <aside className="h-fit rounded-2xl border border-gray-200 bg-white p-6 shadow-card">
-          <h2 className="text-lg font-semibold text-gray-900">Listing tips</h2>
-          <div className="mt-5 space-y-4 text-sm leading-6 text-gray-500">
-            <p>Use natural daylight photos and show all important angles.</p>
-            <p>Be honest about condition to reduce buyer disputes.</p>
-            <p>Keep pricing competitive by checking similar listings.</p>
+        <aside className="space-y-6">
+          <div className="h-fit rounded-2xl border border-gray-200 bg-white p-6 shadow-card">
+            <h2 className="text-lg font-semibold text-gray-900">Listing tips</h2>
+            <div className="mt-5 space-y-4 text-sm leading-6 text-gray-500">
+              <p>Use natural daylight photos and show all important angles.</p>
+              <p>Be honest about condition to reduce buyer disputes.</p>
+              <p>Keep pricing competitive by checking similar listings.</p>
+            </div>
           </div>
+
+          <form
+            action={bulkUploadProductsAction}
+            className="rounded-2xl border border-gray-200 bg-white p-6 shadow-card"
+          >
+            <h2 className="text-lg font-semibold text-gray-900">Bulk upload</h2>
+            <p className="mt-2 text-sm text-gray-500">
+              Paste a JSON array of product objects matching the create product API.
+            </p>
+            <textarea
+              name="productsJson"
+              rows={8}
+              required
+              className="mt-4 w-full rounded-md border border-gray-200 px-3 py-2 font-mono text-xs"
+              placeholder='[{"title":"Item","description":"...","condition":"USED","price":1000,"categoryId":"..."}]'
+            />
+            <button className="mt-4 rounded-md border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700">
+              Bulk upload
+            </button>
+          </form>
         </aside>
       </div>
     </section>

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { addToCartAction, createConversationAction } from "@/app/actions";
+import { addToCartAction, createConversationAction, createSwapRequestAction } from "@/app/actions";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import {
   formatPrice,
@@ -59,11 +59,21 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
         </div>
 
         <aside className="h-fit rounded-2xl border border-gray-200 bg-white p-6 shadow-card">
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex flex-wrap items-center gap-2">
             <StatusBadge label={product.condition} />
             <span className="rounded-full bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-700">
               {product.status ?? "ACTIVE"}
             </span>
+            {product.isBoosted ? (
+              <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">
+                Boosted
+              </span>
+            ) : null}
+            {product.viewCount ? (
+              <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-600">
+                {product.viewCount} views
+              </span>
+            ) : null}
           </div>
           <h1 className="mt-5 text-3xl font-bold tracking-tight text-gray-900">
             {product.title}
@@ -110,11 +120,27 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
                 Message seller
               </button>
             </form>
+            <form action={createSwapRequestAction} className="space-y-2">
+              <input type="hidden" name="productId" value={product.id} />
+              <input
+                name="cashAmount"
+                type="number"
+                min={0}
+                placeholder="Cash offer for swap (BDT)"
+                className="w-full rounded-md border border-gray-200 px-4 py-2 text-sm"
+              />
+              <button
+                type="submit"
+                className="w-full rounded-md border border-brand-200 bg-brand-50 px-5 py-3 text-center text-sm font-semibold text-brand-700 transition hover:bg-brand-100"
+              >
+                Propose swap
+              </button>
+            </form>
             <Link
-              href="/orders"
-              className="rounded-md bg-brand-500 px-5 py-3 text-center text-sm font-semibold text-white transition hover:bg-brand-600"
+              href="/swap"
+              className="block rounded-md border border-gray-200 px-5 py-3 text-center text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
             >
-              View orders
+              Manage swap requests
             </Link>
           </div>
 
@@ -123,8 +149,28 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
             <p className="mt-3 text-sm leading-6 text-gray-500">
               {product.description}
             </p>
+            {product.richDescription ? (
+              <p className="mt-3 text-sm leading-6 text-gray-600">
+                {product.richDescription}
+              </p>
+            ) : null}
+            {product.tags?.length ? (
+              <div className="mt-4 flex flex-wrap gap-2">
+                {product.tags.map((tag) => (
+                  <span
+                    key={tag.id}
+                    className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700"
+                  >
+                    {tag.name}
+                  </span>
+                ))}
+              </div>
+            ) : null}
             <p className="mt-4 text-sm text-gray-500">
               Stock: {product.stock ?? 0} | Category: {product.category?.name ?? "N/A"}
+              {product.expiresAt
+                ? ` | Expires ${new Date(product.expiresAt).toLocaleDateString("en-BD")}`
+                : ""}
             </p>
           </div>
         </aside>

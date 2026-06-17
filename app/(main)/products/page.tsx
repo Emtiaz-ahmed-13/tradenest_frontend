@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { ProductGrid } from "@/components/product/ProductGrid";
 import { PageHeader } from "@/components/shared/PageHeader";
 import type { Category, Product } from "@/lib/api";
@@ -12,6 +13,7 @@ type ProductsPageProps = {
     condition?: string;
     minPrice?: string;
     maxPrice?: string;
+    sort?: string;
   }>;
 };
 
@@ -25,15 +27,24 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
     }
   }
 
-  const [productsResponse, categoriesResponse] = await Promise.all([
-    serverApiGet<Product[]>(`/products?${query.toString()}`).catch(() => ({
+  if (!params.sort) {
+    query.set("sort", "newest");
+  }
+
+  const [productsResponse, categoriesResponse, trendingResponse] = await Promise.all([
+    serverApiGet<Product[]>(`/search?${query.toString()}`).catch(() => ({
       data: [] as Product[],
       meta: { total: 0 },
     })),
     serverApiGet<Category[]>("/categories").catch(() => ({ data: [] as Category[] })),
+    serverApiGet<Array<{ query: string; hitCount: number }>>("/search/trending").catch(
+      () => ({ data: [] }),
+    ),
   ]);
   const products = productsResponse.data;
   const categories = categoriesResponse.data;
+  const trending = trendingResponse.data ?? [];
+  const total = productsResponse.meta?.total ?? products.length;
 
   return (
     <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
@@ -42,6 +53,21 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
         title="Find the right product quickly."
         description="Browse verified listings with clean filters, condition badges, seller ratings, and location context."
       />
+
+      {trending.length ? (
+        <div className="mt-6 flex flex-wrap gap-2">
+          <span className="text-sm font-medium text-gray-500">Trending:</span>
+          {trending.slice(0, 6).map((item) => (
+            <Link
+              key={item.query}
+              href={`/products?q=${encodeURIComponent(item.query)}`}
+              className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700 hover:bg-brand-50 hover:text-brand-700"
+            >
+              {item.query}
+            </Link>
+          ))}
+        </div>
+      ) : null}
 
       <div className="mt-10 grid gap-8 lg:grid-cols-[280px_1fr]">
         <aside className="h-fit rounded-xl border border-gray-200 bg-white p-5 shadow-card">
@@ -106,6 +132,20 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
                 />
               </label>
             </div>
+            <label className="grid gap-2 text-sm font-medium text-gray-700">
+              Sort
+              <select
+                name="sort"
+                defaultValue={params.sort ?? "newest"}
+                className="rounded-md border border-gray-200 px-3 py-2 text-sm"
+              >
+                <option value="newest">Newest</option>
+                <option value="price_asc">Price low to high</option>
+                <option value="price_desc">Price high to low</option>
+                <option value="popular">Most popular</option>
+                <option value="relevance">Relevance</option>
+              </select>
+            </label>
             <div>
               <p className="mb-3 text-sm font-medium text-gray-700">Quick filters</p>
               <div className="flex flex-wrap gap-2">
@@ -125,13 +165,8 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
         <div>
           <div className="mb-5 flex items-center justify-between rounded-xl border border-gray-200 bg-white px-4 py-3 shadow-card">
             <p className="text-sm text-gray-500">
-              Showing {products.length} active products
+              Showing {products.length} of {total} active products
             </p>
-            <select className="rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700">
-              <option>Sort by newest</option>
-              <option>Price low to high</option>
-              <option>Top rated</option>
-            </select>
           </div>
           <ProductGrid products={products} />
         </div>

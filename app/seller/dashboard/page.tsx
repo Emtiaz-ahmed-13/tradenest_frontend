@@ -1,24 +1,41 @@
 import Link from "next/link";
+import { ApiErrorPanel } from "@/components/shared/ApiErrorPanel";
+import { EmptyState } from "@/components/shared/EmptyState";
+import { LoginRequired } from "@/components/shared/LoginRequired";
 import { StatCard } from "@/components/shared/StatCard";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import {
   formatPrice,
+  type KycVerification,
   type Order,
-  type Payment,
   type Product,
+  type SellerDashboard,
 } from "@/lib/api";
 import { safeServerApiGet } from "@/lib/server-api";
 
 export default async function SellerDashboardPage() {
-  const [productsResponse, ordersResponse, paymentsResponse] = await Promise.all([
+  const [
+    dashboardResponse,
+    productsResponse,
+    ordersResponse,
+    kycResponse,
+  ] = await Promise.all([
+    safeServerApiGet<SellerDashboard>("/seller/dashboard"),
     safeServerApiGet<Product[]>("/products/mine"),
     safeServerApiGet<Order[]>("/orders/seller"),
-    safeServerApiGet<Payment[]>("/payments/mine"),
+    safeServerApiGet<KycVerification>("/kyc/status"),
   ]);
+
+  if (!dashboardResponse && !productsResponse) {
+    return <LoginRequired description="Please login to access the seller dashboard." />;
+  }
+
+  const dashboard = dashboardResponse?.data;
   const products = productsResponse?.data ?? [];
   const orders = ordersResponse?.data ?? [];
-  const payments = paymentsResponse?.data ?? [];
-  const revenue = orders.reduce((sum, order) => sum + Number(order.total), 0);
+  const kyc = kycResponse?.data;
+  const boostedProducts = products.filter((product) => product.isBoosted);
+  const expiringProducts = products.filter((product) => Boolean(product.expiresAt));
 
   return (
     <main className="min-h-screen bg-surface">
@@ -31,11 +48,18 @@ export default async function SellerDashboardPage() {
             <span className="font-bold text-gray-900">Seller Studio</span>
           </Link>
           <nav className="mt-8 grid gap-2 text-sm font-medium text-gray-500">
-            {["Overview", "Listings", "Orders", "Messages", "Payouts"].map((item) => (
-              <span key={item} className="rounded-md px-3 py-2 hover:bg-gray-100 hover:text-gray-900">
-                {item}
-              </span>
-            ))}
+            <Link href="/seller/dashboard" className="rounded-md bg-gray-100 px-3 py-2 text-gray-900">
+              Overview
+            </Link>
+            <Link href="/sell" className="rounded-md px-3 py-2 hover:bg-gray-100 hover:text-gray-900">
+              New listing
+            </Link>
+            <Link href="/kyc" className="rounded-md px-3 py-2 hover:bg-gray-100 hover:text-gray-900">
+              KYC status
+            </Link>
+            <Link href="/swap" className="rounded-md px-3 py-2 hover:bg-gray-100 hover:text-gray-900">
+              Swap requests
+            </Link>
           </nav>
         </aside>
 
@@ -54,16 +78,105 @@ export default async function SellerDashboardPage() {
             </Link>
           </div>
 
-          <div className="mt-8 grid gap-5 md:grid-cols-3">
-            <StatCard label="Revenue" value={formatPrice(revenue)} helper="From seller orders" />
-            <StatCard label="Active listings" value={String(products.length)} helper="Your product catalog" />
-            <StatCard label="Payments" value={String(payments.length)} helper="Recorded payment entries" />
+          {!dashboardResponse ? (
+            <div className="mt-6">
+              <ApiErrorPanel message="Seller analytics API unavailable. Showing fallback product and order data." />
+            </div>
+          ) : null}
+
+          <div className="mt-8 grid gap-5 md:grid-cols-4">
+            <StatCard
+              label="Total sales"
+              value={String(dashboard?.totalSales ?? orders.length)}
+              helper="Completed seller orders"
+            />
+            <StatCard
+              label="Sales value"
+              value={formatPrice(dashboard?.totalSalesValue ?? 0)}
+              helper="From seller dashboard API"
+            />
+            <StatCard
+              label="Active listings"
+              value={String(dashboard?.productsCount ?? products.length)}
+              helper="Your product catalog"
+            />
+            <StatCard
+              label="KYC"
+              value={kyc?.status ?? "Not submitted"}
+              helper="Verification status"
+            />
+          </div>
+
+          {dashboard?.productPerformance?.length ? (
+            <div className="mt-8 rounded-2xl border border-gray-200 bg-white p-6 shadow-card">
+              <h2 className="text-xl font-semibold text-gray-900">Product performance</h2>
+              <div className="mt-5 space-y-3">
+                {dashboard.productPerformance.slice(0, 5).map((row) => (
+                  <div
+                    key={row.productId}
+                    className="flex items-center justify-between rounded-xl bg-gray-50 p-4 text-sm"
+                  >
+                    <span className="font-medium text-gray-700">{row.productId}</span>
+                    <div className="flex gap-4 text-gray-500">
+                      <span>{row.unitsSold} sold</span>
+                      <span>{formatPrice(row.revenue)}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          <div className="mt-8 grid gap-6 lg:grid-cols-2">
+            <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-card">
+              <h2 className="text-xl font-semibold text-gray-900">Boosted listings</h2>
+              <div className="mt-5 space-y-3">
+                {boostedProducts.length ? (
+                  boostedProducts.slice(0, 4).map((product) => (
+                    <Link
+                      key={product.id}
+                      href={`/products/${product.slug}`}
+                      className="flex items-center justify-between rounded-xl bg-gray-50 p-4"
+                    >
+                      <span className="font-semibold text-gray-900">{product.title}</span>
+                      <StatusBadge label="Boosted" />
+                    </Link>
+                  ))
+                ) : (
+                  <EmptyState title="No boosted products" />
+                )}
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-card">
+              <h2 className="text-xl font-semibold text-gray-900">Expiring soon</h2>
+              <div className="mt-5 space-y-3">
+                {expiringProducts.length ? (
+                  expiringProducts.slice(0, 4).map((product) => (
+                    <Link
+                      key={product.id}
+                      href={`/products/${product.slug}`}
+                      className="flex items-center justify-between rounded-xl bg-gray-50 p-4"
+                    >
+                      <span className="font-semibold text-gray-900">{product.title}</span>
+                      <span className="text-xs text-amber-700">
+                        {product.expiresAt
+                          ? new Date(product.expiresAt).toLocaleDateString("en-BD")
+                          : ""}
+                      </span>
+                    </Link>
+                  ))
+                ) : (
+                  <EmptyState title="No expiring listings" />
+                )}
+              </div>
+            </div>
           </div>
 
           <div className="mt-8 rounded-2xl border border-gray-200 bg-white p-6 shadow-card">
             <h2 className="text-xl font-semibold text-gray-900">Your listings</h2>
             <div className="mt-5 space-y-4">
-              {products.slice(0, 4).map((product) => (
+              {products.slice(0, 6).map((product) => (
                 <Link
                   href={`/products/${product.slug}`}
                   key={product.id}
@@ -79,9 +192,10 @@ export default async function SellerDashboardPage() {
                 </Link>
               ))}
               {!products.length ? (
-                <div className="rounded-xl border border-dashed border-gray-200 p-5 text-sm text-gray-500">
-                  No seller listings yet. Create one from the sell page.
-                </div>
+                <EmptyState
+                  title="No seller listings yet"
+                  description="Create one from the sell page."
+                />
               ) : null}
             </div>
           </div>
@@ -106,6 +220,15 @@ export default async function SellerDashboardPage() {
               ))}
             </div>
           </div>
+
+          {dashboard?.payoutSummary ? (
+            <div className="mt-8 rounded-2xl border border-gray-200 bg-white p-6 shadow-card">
+              <h2 className="text-xl font-semibold text-gray-900">Payout summary</h2>
+              <pre className="mt-4 overflow-auto rounded-xl bg-gray-50 p-4 text-xs text-gray-600">
+                {JSON.stringify(dashboard.payoutSummary, null, 2)}
+              </pre>
+            </div>
+          ) : null}
         </section>
       </div>
     </main>

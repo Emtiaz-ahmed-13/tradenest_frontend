@@ -4,10 +4,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { authClient } from "@/lib/auth-client";
-
-function getAuthErrorMessage(error: { message?: string } | null | undefined) {
-  return error?.message ?? "Registration failed. Please try again.";
-}
+import {
+  getAuthErrorMessage,
+  getAuthNetworkErrorMessage,
+} from "@/lib/auth-errors";
 
 export function RegisterForm() {
   const router = useRouter();
@@ -24,18 +24,25 @@ export function RegisterForm() {
     const email = String(formData.get("email") ?? "");
     const password = String(formData.get("password") ?? "");
 
-    const { error: authError } = await authClient.signUp.email({
-      name,
-      email,
-      password,
-      callbackURL: "/profile",
-    });
+    try {
+      const { error: authError } = await authClient.signUp.email({
+        name,
+        email,
+        password,
+        callbackURL: "/profile",
+      });
 
-    setIsSubmitting(false);
-
-    if (authError) {
-      setError(getAuthErrorMessage(authError));
+      if (authError) {
+        setError(
+          getAuthErrorMessage(authError, "Registration failed. Please try again."),
+        );
+        return;
+      }
+    } catch (requestError) {
+      setError(getAuthNetworkErrorMessage(requestError));
       return;
+    } finally {
+      setIsSubmitting(false);
     }
 
     router.push("/profile");
